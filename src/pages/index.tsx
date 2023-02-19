@@ -1,6 +1,63 @@
+import Box from "@/components/Box/Box";
+import BoxesContainer from "@/components/BoxesContainer/BoxesContainer";
+import KeyboardWrapper from "@/components/KeyboardWrapper";
 import Head from "next/head";
+import React, { ChangeEvent } from "react";
+
+const ROWS = 6;
+const COLS = 5;
+const MATRIX = Array.from(Array(ROWS).fill(null), () => Array(COLS).fill(null));
 
 export default function Home() {
+  const inputRef = React.useRef(null);
+  const keyboardRef = React.useRef(null);
+  const [row, setRow] = React.useState(0);
+  const [grid, setGrid] = React.useState(MATRIX);
+  const [isGameOver, setIsGameOver] = React.useState(false);
+  const [currentGuess, setCurrentGuess] = React.useState("");
+
+  const input = keyboardRef.current as any;
+
+  const setBoxValue = (value: string, row: number, col: number) => {
+    setGrid((prev) => {
+      const copy = [...prev];
+      copy[row][col] = value;
+      return copy;
+    });
+  };
+
+  const onChangeInput = (event: ChangeEvent<HTMLInputElement>): void => {
+    const input = event.target.value;
+
+    const char = Array.from(input).slice(-1).pop();
+    setBoxValue(char || "", row, input.length - 1);
+    setCurrentGuess(input);
+
+    if (keyboardRef.current) {
+      (keyboardRef.current as any)?.setInput(input);
+    }
+  };
+
+  const handleKeyPress = (key: string) => {
+    if (isGameOver) return;
+
+    const length = input?.getInput()?.length || 0;
+    const value = key === "{bksp}" ? "" : key;
+
+    if (length >= COLS) {
+      input?.clearInput();
+      setRow((prev) => prev + 1);
+      setBoxValue(value, row + 1, 0);
+    } else {
+      setBoxValue(value, row, length);
+    }
+  };
+
+  React.useEffect(() => {
+    // Trigger after all boxes were filled
+    setIsGameOver(grid.flatMap((a) => a).every((item) => item));
+  }, [grid]);
+
   return (
     <>
       <Head>
@@ -9,8 +66,34 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main>
-        <h1 className="text-3xl font-bold underline">Hello world!</h1>
+      <main className="container py-5">
+        <BoxesContainer
+          onClick={() => {
+            (inputRef?.current as any)?.focus();
+          }}
+        >
+          {grid.map((row, index) => (
+            <React.Fragment key={`row-${index}`}>
+              {row.map((item, index) => (
+                <Box key={index} status="empty">
+                  {item}
+                </Box>
+              ))}
+            </React.Fragment>
+          ))}
+        </BoxesContainer>
+        <input
+          className="hidden"
+          value={currentGuess}
+          onChange={(e) => onChangeInput(e)}
+          maxLength={COLS}
+          ref={inputRef}
+        />
+        <KeyboardWrapper
+          keyboardRef={keyboardRef as any}
+          onKeyPress={handleKeyPress}
+          onChange={setCurrentGuess}
+        />
       </main>
     </>
   );
